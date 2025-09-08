@@ -13,16 +13,27 @@ def clip_contrastive_loss(logits_per_image, logits_per_text):
 class CLIPLightning(pl.LightningModule):
     def __init__(self,
                  model_name="ViT-B/32",   # 표기용
+                 # 이미지 인코더 설정
+                 image_encoder_type="vit",  # "vit" 또는 "resnet"
                  image_size=224, patch_size=32,
                  vision_width=768, vision_layers=12, vision_heads=12,
+                 # 텍스트 인코더 설정
                  text_width=512, text_layers=12, text_heads=8,
                  context_length=77, vocab_size=49408,
+                 # 공통 설정
                  embed_dim=512,
                  lr=1e-4, weight_decay=0.01, finetune=False):
         super().__init__()
         self.save_hyperparameters()
-        self.model = CLIPModel(image_size, patch_size, vision_width, vision_layers, vision_heads,
-                               text_width, text_layers, text_heads, context_length, vocab_size, embed_dim)
+        
+        # 다중 인코더 지원 CLIP 모델 생성
+        self.model = CLIPModel(
+            image_encoder_type=image_encoder_type,
+            image_size=image_size, patch_size=patch_size,
+            vision_width=vision_width, vision_layers=vision_layers, vision_heads=vision_heads,
+            text_width=text_width, text_layers=text_layers, text_heads=text_heads, 
+            context_length=context_length, vocab_size=vocab_size, embed_dim=embed_dim
+        )
 
         # finetune=False면 보통 logit_scale만 학습하거나, 전체 학습 (여기선 전체 학습 허용)
         if not finetune:
@@ -63,7 +74,8 @@ class CLIPDataModule(pl.LightningDataModule):
         self.img_root = img_root
         self.batch_size, self.num_workers = batch_size, num_workers
         self.image_size, self.context_length = image_size, context_length
-        # 토크나이저/트랜스폼은 한 번만 만들어 재사용
+        
+        # BPE 토크나이저와 이미지 변환 준비
         from .text_encoder import TextTransformer
         self.tokenizer = TextTransformer(context_length=context_length)
         self.transform = build_image_transform(image_size)

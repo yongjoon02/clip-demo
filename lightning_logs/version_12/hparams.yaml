@@ -1,0 +1,16 @@
+model_name: ViT-B/32
+image_encoder_type: vit
+image_size: 224
+patch_size: 32
+vision_width: 768
+vision_layers: 12
+vision_heads: 12
+text_width: 512
+text_layers: 12
+text_heads: 8
+context_length: 77
+vocab_size: 49408
+embed_dim: 512
+lr: 1.0e-05
+weight_decay: 0.01
+finetune: true

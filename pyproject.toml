@@ -7,6 +7,10 @@ authors = [
     { name = "YongJun Kim", email = "yongjoon@kist.re.kr" }
 ]
 requires-python = ">=3.10"
+dependencies = [
+    "ftfy>=6.3.1",
+    "regex>=2025.9.1",
+]
 
 [build-system]
 requires = ["hatchling"]

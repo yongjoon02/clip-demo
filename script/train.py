@@ -30,17 +30,22 @@ def parse():
     ap.add_argument("--finetune", action="store_true", help="전체 모델 미세조정(기본은 전체 학습)")
     ap.add_argument("--seed", type=int, default=42)
     
-    # 모델 아키텍처 설정
+    # 이미지 인코더 설정
+    ap.add_argument("--image-encoder", default="vit", choices=["vit", "resnet"], help="이미지 인코더 타입")
     ap.add_argument("--image-size", type=int, default=224)
     ap.add_argument("--patch-size", type=int, default=32)
     ap.add_argument("--vision-width", type=int, default=768)
     ap.add_argument("--vision-layers", type=int, default=12)
     ap.add_argument("--vision-heads", type=int, default=12)
+    
+    # 텍스트 인코더 설정
     ap.add_argument("--text-width", type=int, default=512)
     ap.add_argument("--text-layers", type=int, default=12)
     ap.add_argument("--text-heads", type=int, default=8)
     ap.add_argument("--context-length", type=int, default=77)
     ap.add_argument("--vocab-size", type=int, default=49408)
+    
+    # 공통 설정
     ap.add_argument("--embed-dim", type=int, default=512)
     
     return ap.parse_args()
@@ -57,6 +62,7 @@ def main():
     
     model = CLIPLightning(
         model_name=args.model_name,
+        image_encoder_type=args.image_encoder,
         image_size=args.image_size, patch_size=args.patch_size,
         vision_width=args.vision_width, vision_layers=args.vision_layers, vision_heads=args.vision_heads,
         text_width=args.text_width, text_layers=args.text_layers, text_heads=args.text_heads,
