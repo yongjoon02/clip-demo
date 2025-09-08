@@ -1,0 +1,4 @@
+model_name: ViT-B/32
+lr: 1.0e-05
+weight_decay: 0.01
+finetune: true
