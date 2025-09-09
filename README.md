@@ -1,49 +1,4 @@
 
-┌─────────────────┐    ┌──────────────────┐
-│   이미지 입력    │    │    텍스트 입력    │
-│   (224×224)     │    │   ("a cat")     │
-└─────────┬───────┘    └─────────┬────────┘
-          │                      │
-    ┌─────▼──────┐        ┌──────▼───────┐
-    │ViT Encoder │        │Text Encoder  │
-    │  (12 layers)│        │ (12 layers)  │
-    └─────┬──────┘        └──────┬───────┘
-          │                      │
-    ┌─────▼──────┐        ┌──────▼───────┐
-    │Image Embed │        │ Text Embed   │
-    │   (512D)   │        │   (512D)     │
-    └─────┬──────┘        └──────┬───────┘
-          │                      │
-          └──────┬─────────┬─────┘
-                 │         │
-            ┌────▼─────────▼────┐
-            │  Cosine Similarity │
-            │  × Temperature     │
-            └────────────────────┘
-```
-
-
-```
-clip-demo/
-├── src/                    # 핵심 모델 코드
-│   ├── model.py           # CLIP 메인 모델
-│   ├── image_encoder.py   # Vision Transformer
-│   ├── text_encoder.py    # Text Transformer + 토크나이저
-│   ├── clip_layers.py     # Transformer 블록들
-│   ├── trainer.py         # PyTorch Lightning 모듈
-│   ├── dataset.py         # 데이터 로더
-│   ├── loss.py           # Contrastive Loss
-│   └── utils.py          # 유틸리티 함수
-├── script/                # 실행 스크립트
-│   ├── train.py          # 학습 스크립트
-│   ├── inference.py      # 추론 스크립트
-│   └── evaluate.py       # 평가 스크립트
-├── data/                  # 샘플 데이터
-│   ├── train.csv         # 학습 데이터 목록
-│   └── images/           # 이미지 파일들
-└── test_model.py         # 모델 테스트 스크립트
-```
-
 
 ### 1. 환경 설정
 
