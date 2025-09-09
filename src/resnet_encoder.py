@@ -1,4 +1,3 @@
-# src/resnet_encoder.py
 from __future__ import annotations
 import torch
 import torch.nn as nn
@@ -7,37 +6,26 @@ from typing import Tuple
 from collections import OrderedDict
 
 class Bottleneck(nn.Module):
-    """
-    ResNet Bottleneck 블록 (ResNet-D 변형)
-    - Anti-aliasing을 위한 blur pooling 포함
-    - 3x3 conv에서 stride=2를 2x2 avg pooling으로 대체
-    """
     expansion = 4
 
     def __init__(self, inplanes, planes, stride=1):
         super().__init__()
 
-        # ResNet-D 개선사항: 1x1 conv에서 stride 제거
         self.conv1 = nn.Conv2d(inplanes, planes, 1, bias=False)
         self.bn1 = nn.BatchNorm2d(planes)
         self.relu1 = nn.ReLU(inplace=True)
 
-        # 3x3 conv
         self.conv2 = nn.Conv2d(planes, planes, 3, padding=1, bias=False)
         self.bn2 = nn.BatchNorm2d(planes)
         self.relu2 = nn.ReLU(inplace=True)
 
-        # Anti-aliasing: stride=2일 때 blur pooling 사용
         self.avgpool = nn.AvgPool2d(2) if stride == 2 else nn.Identity()
 
-        # 1x1 conv (expansion)
         self.conv3 = nn.Conv2d(planes, planes * self.expansion, 1, bias=False)
         self.bn3 = nn.BatchNorm2d(planes * self.expansion)
 
-        # Shortcut connection
         self.downsample = None
         if stride != 1 or inplanes != planes * self.expansion:
-            # ResNet-D: shortcut에서도 anti-aliasing 적용
             self.downsample = nn.Sequential(OrderedDict([
                 ("pool", nn.AvgPool2d(2) if stride == 2 else nn.Identity()),
                 ("conv", nn.Conv2d(inplanes, planes * self.expansion, 1, stride=1, bias=False)),
@@ -58,7 +46,6 @@ class Bottleneck(nn.Module):
         out = self.bn2(out)
         out = self.relu2(out)
 
-        # Anti-aliasing pooling
         if self.stride == 2:
             out = self.avgpool(out)
 
@@ -74,11 +61,6 @@ class Bottleneck(nn.Module):
         return out
 
 class AttentionPool2d(nn.Module):
-    """
-    CLIP의 Attention Pooling
-    - Global Average Pooling 대신 attention 메커니즘 사용
-    - 위치별 가중 평균으로 더 풍부한 표현 학습
-    """
     def __init__(self, spacial_dim: int, embed_dim: int, num_heads: int, output_dim: int = None):
         super().__init__()
         self.positional_embedding = nn.Parameter(torch.randn(spacial_dim ** 2 + 1, embed_dim) / embed_dim ** 0.5)
@@ -89,9 +71,9 @@ class AttentionPool2d(nn.Module):
         self.num_heads = num_heads
 
     def forward(self, x):
-        x = x.flatten(start_dim=2).permute(2, 0, 1)  # NCHW -> (HW)NC
-        x = torch.cat([x.mean(dim=0, keepdim=True), x], dim=0)  # (HW+1)NC
-        x = x + self.positional_embedding[:, None, :].to(x.dtype)  # (HW+1)NC
+        x = x.flatten(start_dim=2).permute(2, 0, 1)
+        x = torch.cat([x.mean(dim=0, keepdim=True), x], dim=0)
+        x = x + self.positional_embedding[:, None, :].to(x.dtype)
         x, _ = F.multi_head_attention_forward(
             query=x[:1], key=x, value=x,
             embed_dim_to_check=x.shape[-1],
@@ -114,20 +96,11 @@ class AttentionPool2d(nn.Module):
         return x.squeeze(0)
 
 class ModifiedResNet(nn.Module):
-    """
-    CLIP의 수정된 ResNet
-    - ResNet-D 개선사항 적용
-    - Attention Pooling 사용
-    - Anti-aliasing을 위한 blur pooling
-    """
-
     def __init__(self, layers, output_dim, heads, input_resolution=224, width=64):
         super().__init__()
         self.output_dim = output_dim
         self.input_resolution = input_resolution
 
-        # Stem (초기 conv 레이어들)
-        # ResNet-D: 7x7 conv를 3개의 3x3 conv로 교체
         self.conv1 = nn.Conv2d(3, width // 2, kernel_size=3, stride=2, padding=1, bias=False)
         self.bn1 = nn.BatchNorm2d(width // 2)
         self.relu1 = nn.ReLU(inplace=True)
@@ -142,15 +115,13 @@ class ModifiedResNet(nn.Module):
         
         self.avgpool = nn.AvgPool2d(2)
 
-        # ResNet 레이어들
-        self._inplanes = width  # 내부 상태 추적
+        self._inplanes = width
         self.layer1 = self._make_layer(width, layers[0])
         self.layer2 = self._make_layer(width * 2, layers[1], stride=2)
         self.layer3 = self._make_layer(width * 4, layers[2], stride=2)
         self.layer4 = self._make_layer(width * 8, layers[3], stride=2)
 
-        # Attention Pooling (Global Average Pooling 대신)
-        embed_dim = width * 32  # width * 8 * Bottleneck.expansion
+        embed_dim = width * 32
         self.attnpool = AttentionPool2d(input_resolution // 32, embed_dim, heads, output_dim)
 
     def _make_layer(self, planes, blocks, stride=1):
@@ -179,19 +150,12 @@ class ModifiedResNet(nn.Module):
         return x
 
 class ResNetEncoder(nn.Module):
-    """
-    CLIP ResNet 인코더 래퍼
-    - ModifiedResNet + L2 정규화
-    - 다양한 ResNet 크기 지원
-    """
-    
     def __init__(self, 
                  model_name: str = "RN50", 
                  embed_dim: int = 512,
                  input_resolution: int = 224):
         super().__init__()
         
-        # ResNet 구성 정의
         resnet_configs = {
             "RN50": {
                 "layers": [3, 4, 6, 3],
@@ -236,26 +200,15 @@ class ResNetEncoder(nn.Module):
         self.embed_dim = embed_dim
 
     def forward(self, x: torch.Tensor) -> torch.Tensor:
-        """
-        Args:
-            x: (B, 3, H, W) 이미지 텐서
-        Returns:
-            (B, embed_dim) L2 정규화된 임베딩
-        """
         features = self.model(x)
-        # L2 정규화 (CLIP과 동일)
         features = features / features.norm(dim=-1, keepdim=True)
         return features
 
-# 편의를 위한 팩토리 함수들
 def resnet50(embed_dim: int = 512, input_resolution: int = 224) -> ResNetEncoder:
-    """ResNet-50 기반 CLIP 인코더"""
     return ResNetEncoder("RN50", embed_dim, input_resolution)
 
 def resnet101(embed_dim: int = 512, input_resolution: int = 224) -> ResNetEncoder:
-    """ResNet-101 기반 CLIP 인코더"""
     return ResNetEncoder("RN101", embed_dim, input_resolution)
 
 def resnet50x4(embed_dim: int = 512, input_resolution: int = 224) -> ResNetEncoder:
-    """ResNet-50x4 기반 CLIP 인코더 (더 넓은 채널)"""
-    return ResNetEncoder("RN50x4", embed_dim, input_resolution) 
+    return ResNetEncoder("RN50x4", embed_dim, input_resolution)
