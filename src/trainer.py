@@ -4,11 +4,6 @@ from .model import CLIPModel
 from .dataset import ImageTextCsv, build_image_transform, build_collate_clip
 import torch.nn.functional as F
 
-def clip_contrastive_loss(logits_per_image, logits_per_text):
-    b = logits_per_image.size(0)
-    tgt = torch.arange(b, device=logits_per_image.device)
-    return 0.5 * (F.cross_entropy(logits_per_image, tgt) + F.cross_entropy(logits_per_text, tgt))
-
 class CLIPLightning(pl.LightningModule):
     def __init__(self,
                  model_name="ViT-B/32",
@@ -48,7 +43,6 @@ class CLIPLightning(pl.LightningModule):
         out = self.model(batch["images"], batch["text_tokens"].to(self.device))
         loss = clip_contrastive_loss(out["logits_per_image"], out["logits_per_text"])
         self.log("val/loss", loss, prog_bar=True, on_epoch=True)
-
     def on_before_optimizer_step(self, optimizer):
         with torch.no_grad():
             self.model.logit_scale.clamp_(max=math.log(100.0))
